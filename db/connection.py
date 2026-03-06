@@ -1,35 +1,22 @@
-import sqlite3
-from config import DB_PATH
+"""DB 연결 — 브릿지 패턴.
 
+기존 import 유지: from db.connection import query, execute, execute_script
+내부적으로 get_backend()에 위임하여 SQLite/Oracle 자동 전환.
+"""
 
-def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+from db.backends import get_backend
 
 
 def query(sql: str, params: tuple = ()) -> list[dict]:
-    conn = get_connection()
-    try:
-        rows = conn.execute(sql, params).fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        conn.close()
+    """SELECT 쿼리 → list[dict] 반환."""
+    return get_backend().query(sql, params)
 
 
 def execute(sql: str, params: tuple = ()) -> None:
-    conn = get_connection()
-    try:
-        conn.execute(sql, params)
-        conn.commit()
-    finally:
-        conn.close()
+    """INSERT/UPDATE/DELETE 실행."""
+    get_backend().execute(sql, params)
 
 
 def execute_script(script: str) -> None:
-    conn = get_connection()
-    try:
-        conn.executescript(script)
-    finally:
-        conn.close()
+    """SQL 스크립트 일괄 실행."""
+    get_backend().execute_script(script)

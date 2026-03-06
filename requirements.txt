@@ -5,3 +5,4 @@ python-dotenv>=1.0.0
 fastapi>=0.115.0
 uvicorn>=0.32.0
 fastmcp>=2.0.0
+oracledb>=2.0.0  # optional — Oracle 사용 시만 필요

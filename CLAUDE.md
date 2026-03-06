@@ -1,55 +1,53 @@
 # Factory AI
 
-자동차 공장 생산 데이터 자연어 질의 시스템 — LangGraph + Gemini + SQLite.
+자동차 공장 생산 데이터 자연어 질의 시스템.
+코드는 Stage 3(최종) 기준. 연결만 바꾸면 Stage 1/2/3 모두 동작.
+
+## 3단계 아키텍처
+```
+Stage 1: User → Open WebUI ──→ MCP (:8501) → DB
+Stage 2: User → Open WebUI → Pipeline → Dify ─→ Agent+MCP → DB
+Stage 3: User → Open WebUI → Pipeline → Dify ─┬→ Agent+MCP (간단)
+                                               └→ LangGraph :8500 (복잡) → DB
+```
 
 ## 기술 스택
 - Python 3.13 / `.venv/`
-- LangGraph (StateGraph)
-- langchain-google-genai (Gemini 2.0 Flash)
-- SQLite (factory.db — `python -m db.seed`로 재생성)
-- FastAPI (:8500) — Dify/Open WebUI 연동
-
-## 아키텍처
-```
-Open WebUI (:3006) — 채팅 UI
-    ↓ Pipeline → Dify Chat API
-Dify (Chatflow, 3분류)
-    ├─ 일반 대화   → Dify LLM 직접 응답
-    ├─ 간단한 조회 → MCP (:8501) 도구 1회 호출
-    └─ 복잡한 분석 → LangGraph (:8500) 멀티스텝
-MCP + FastMCP (:8501) — 8개 SQL 도구 직접 노출
-LangGraph + FastAPI (:8500) — 복잡한 분석 전담
-  IntentAgent → InfoAgent ↔ ToolNode → ResponseAgent
-    ↓ @tool SQL queries
-SQLite (factory.db — 2026년 2월 가상 생산 데이터)
-```
+- FastMCP (Streamable HTTP, :8501) — 모든 Stage 공통
+- LangGraph (StateGraph) + Gemini 2.0 Flash — Stage 3
+- FastAPI (:8500) — Stage 3
+- SQLite (factory.db) / Oracle 듀얼 지원
+- Docker: Open WebUI (:3006) + Pipelines (:9099)
 
 ## 구조
 ```
-main.py                     # CLI 대화형 진입점
-server.py                   # FastAPI 서버 (:8500)
-mcp_server.py               # MCP 서버 (:8501, FastMCP Streamable HTTP)
-config.py                   # 환경 변수, 모델 설정
+mcp_server.py              # MCP 서버 (:8501) — 모든 Stage
+server.py                  # LangGraph 서버 (:8500) — Stage 3
+main.py                    # CLI 테스트 — Stage 3
+config.py                  # DB + Gemini + Server 설정
 agents/
-  state.py                  # AgentState (conversation_history 포함)
-  prompts.py                # System 프롬프트 2종
-  intent_agent.py           # IntentAgent + _build_context() + FM I/O
-  info_agent.py             # InfoAgent + ResponseAgent + FM I/O
-  message_trimmer.py        # 3계층 토큰 관리
+  state.py                 # AgentState TypedDict
+  prompts.py               # 시스템 프롬프트 2종
+  intent_agent.py          # 6종 의도 분류
+  info_agent.py            # InfoAgent + ResponseAgent
+  message_trimmer.py       # 3계층 토큰 관리
 graph/
-  workflow.py               # StateGraph + 조건부 라우팅
+  workflow.py              # StateGraph + 조건부 라우팅
 tools/
-  factory_tools.py          # @tool 8개 + ALL_TOOLS
+  factory_tools.py         # @tool 8개 (LangGraph용)
 db/
-  schema.sql                # 6테이블 스키마 + 마스터 데이터
-  connection.py             # SQLite 유틸
-  seed.py                   # 가상 생산 데이터 생성
+  connection.py            # 브릿지 패턴 (SQLite/Oracle 자동 전환)
+  schema.sql               # 6테이블 스키마
+  seed.py                  # 가상 데이터 생성
+  backends/                # SQLite + Oracle 백엔드
 dify/
-  openapi.yaml              # Dify Custom Tool 스펙
-  README.md                 # Dify 연동 가이드
+  openapi.yaml             # LangGraph Custom Tool 스펙
+  README.md                # 2분류/3분류 Chatflow 가이드
 open-webui/
-  docker-compose.yml        # Open WebUI + Pipelines
-  pipelines/factory_agent.py # Pipeline 클래스
+  docker-compose.yml       # Open WebUI + Pipelines
+  pipelines/factory_agent.py
+docs/
+  MCP_GUIDE.md             # MCP 상세 가이드
 ```
 
 ## 의도 6개
@@ -66,45 +64,42 @@ production_query, defect_query, line_status, downtime_query, trend_analysis, gen
 8. get_production_trend — 생산 추이
 
 ## DB 테이블 6개
-production_lines(3), models(4), shifts(3), daily_production(~252), defects(~170), downtime(~18)
+production_lines(3), models(4), shifts(3), daily_production(~300), defects(~287), downtime(~17)
 
-## 실행
+## 실행 (Stage별)
 ```bash
+# 공통
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m db.seed          # DB 생성 (최초 1회)
+python -m db.seed
+
+# Stage 1: MCP만
+python mcp_server.py
+
+# Stage 3: + LangGraph
+echo "GEMINI_API_KEY=your-key" > .env
+python server.py
 python main.py             # CLI 테스트
-python server.py           # FastAPI 서버 (:8500)
 ```
 
-## API
+## API (Stage 3)
 ```bash
-# 자연어 질의
 curl -X POST localhost:8500/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "오늘 생산 현황", "session_id": "test"}'
 
-# 헬스체크
 curl localhost:8500/health
-
-# 세션 초기화
-curl -X POST "localhost:8500/reset?session_id=test"
 ```
 
 ## MCP 서버 (:8501)
-FastMCP로 8개 SQL 도구를 MCP 프로토콜(Streamable HTTP)로 노출.
-Open WebUI에서 LLM이 직접 도구를 선택/호출할 수 있다.
-
 ```bash
-python mcp_server.py        # MCP 서버 (:8501)
+python mcp_server.py
 ```
+- Transport: Streamable HTTP (`/mcp`)
+- launchd: `com.dongcheol.factory-mcp` (KeepAlive)
+- Open WebUI: Admin → Tools → MCP Servers → `http://host.docker.internal:8501/mcp`
 
-- **Transport**: Streamable HTTP (`/mcp`)
-- **launchd**: `com.dongcheol.factory-mcp` (KeepAlive)
-- **Open WebUI 설정**: Admin → Settings → Tools → MCP Servers
-  - URL: `http://host.docker.internal:8501/mcp`
-
-## 연동
-- **Dify**: `dify/openapi.yaml` → Custom Tool 등록 → Chatflow HTTP Request
-- **Open WebUI Pipeline**: `cd open-webui && docker compose up -d` → localhost:3006
-- **Open WebUI MCP**: Admin → Tools → MCP Servers → `http://host.docker.internal:8501/mcp`
+## Dify 연동
+- MCP: Dify → Tools → MCP → `http://host.docker.internal:8501/mcp`
+- Custom Tool: `dify/openapi.yaml` → Server: `:8500`
+- Chatflow: `dify/README.md` 참조 (2분류/3분류)
