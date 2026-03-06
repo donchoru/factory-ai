@@ -19,7 +19,8 @@ services:
     ports:
       - "9099:9099"
     environment:
-      - LANGGRAPH_URL=http://host.docker.internal:8500  # LangGraph 서버
+      - DIFY_API_URL=http://host.docker.internal       # Dify 서버 (로컬)
+      - DIFY_API_KEY=app-factoryai2026                  # Dify Chatflow API 키
       - PIPELINES_API_KEY=factory-ai-key
     volumes:
       - ./pipelines:/app/pipelines
