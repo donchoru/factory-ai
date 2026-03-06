@@ -11,10 +11,13 @@
 
 ## 아키텍처
 ```
-Dify / Open WebUI (프론트엔드)
-    ↓ POST /chat {message, session_id}
-FastAPI (:8500)
-  IntentAgent → (route) → InfoAgent ↔ ToolNode → ResponseAgent
+Open WebUI (:3006) — 채팅 UI
+    ↓ Pipeline → Dify Chat API
+Dify (Chatflow) — 라우팅 + 간단한 건 직접 처리
+    ├─ 일반 대화 → Dify LLM 직접 응답
+    └─ 공장 조회 → POST :8500/chat
+LangGraph + FastAPI (:8500) — 복잡한 분석 전담
+  IntentAgent → InfoAgent ↔ ToolNode → ResponseAgent
     ↓ @tool SQL queries
 SQLite (factory.db — 2026년 2월 가상 생산 데이터)
 ```
