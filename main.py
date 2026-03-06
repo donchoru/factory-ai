@@ -1,14 +1,26 @@
 """CLI 대화 진입점 — 로컬 테스트용."""
-import sys
+
 from graph.workflow import build_graph
+
+
+def _build_state(message: str, history: list[dict]) -> dict:
+    return {
+        "messages": [],
+        "user_input": message,
+        "intent": "",
+        "intent_detail": "",
+        "trace_log": [],
+        "final_answer": "",
+        "conversation_history": history[-10:],
+        "tool_call_round": 0,
+    }
 
 
 def main():
     graph = build_graph()
-    history = []
+    history: list[dict] = []
     print("=== Factory AI — 자동차 공장 생산 질의 시스템 ===")
-    print("종료: quit | 이력 초기화: clear")
-    print()
+    print("종료: quit | 이력 초기화: clear\n")
 
     while True:
         try:
@@ -27,19 +39,8 @@ def main():
             print("대화 이력 초기화.\n")
             continue
 
-        state = {
-            "messages": [],
-            "user_input": user_input,
-            "intent": "",
-            "intent_detail": "",
-            "trace_log": [],
-            "final_answer": "",
-            "conversation_history": history[-10:],
-            "tool_call_round": 0,
-        }
-
         try:
-            result = graph.invoke(state)
+            result = graph.invoke(_build_state(user_input, history))
         except Exception as e:
             print(f"\n오류: {e}\n")
             continue
@@ -51,11 +52,7 @@ def main():
         print(answer)
         print()
 
-        history.append({
-            "user": user_input,
-            "answer": answer[:500],
-            "intent": intent,
-        })
+        history.append({"user": user_input, "answer": answer[:500], "intent": intent})
 
 
 if __name__ == "__main__":

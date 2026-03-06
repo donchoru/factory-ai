@@ -1,19 +1,23 @@
 """정보조회 Agent — 의도 기반으로 Tool 호출 후 응답 생성."""
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from agents.state import AgentState, dump_state
-from agents.prompts import INFO_SYSTEM_PROMPT
+
 from agents.message_trimmer import prepare_messages
-from tools.factory_tools import ALL_TOOLS
+from agents.prompts import INFO_SYSTEM_PROMPT
+from agents.state import AgentState, dump_state
 from config import GEMINI_API_KEY, GEMINI_MODEL
+from tools.factory_tools import ALL_TOOLS
 
 MAX_TOOL_ROUNDS = 3
 
-llm = ChatGoogleGenerativeAI(
-    model=GEMINI_MODEL,
-    google_api_key=GEMINI_API_KEY,
-    temperature=0,
-).bind_tools(ALL_TOOLS)
+_base_llm = ChatGoogleGenerativeAI(
+    model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0,
+)
+llm = _base_llm.bind_tools(ALL_TOOLS)
+chat_llm = ChatGoogleGenerativeAI(
+    model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY, temperature=0.7,
+)
 
 
 def info_node(state: AgentState) -> dict:
@@ -147,12 +151,7 @@ def respond_node(state: AgentState) -> dict:
 
     if intent == "general_chat":
         chat_system = "당신은 친절한 자동차 공장 생산 관리 어시스턴트입니다. 공장과 무관한 질문에는 간단히 답하고, 생산 관련 질문을 유도하세요."
-        simple_llm = ChatGoogleGenerativeAI(
-            model=GEMINI_MODEL,
-            google_api_key=GEMINI_API_KEY,
-            temperature=0.7,
-        )
-        response = simple_llm.invoke([
+        response = chat_llm.invoke([
             SystemMessage(content=chat_system),
             HumanMessage(content=user_input),
         ])

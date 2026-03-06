@@ -19,8 +19,7 @@ services:
     ports:
       - "9099:9099"
     environment:
-      - DIFY_API_URL=http://host.docker.internal  # Dify 서버 주소
-      - DIFY_API_KEY=app-xxxxxxxxxxxx              # Dify 앱 API 키
+      - LANGGRAPH_URL=http://host.docker.internal:8500  # LangGraph 서버
       - PIPELINES_API_KEY=factory-ai-key
     volumes:
       - ./pipelines:/app/pipelines
