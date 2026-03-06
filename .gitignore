@@ -3,7 +3,8 @@ __pycache__/
 *.pyc
 .env
 factory.db
-traces/
+traces/*
+!traces/.gitkeep
 
 logs/
 open-webui/pipelines/factory_agent/
