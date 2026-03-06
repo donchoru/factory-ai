@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+factory.db
+traces/
+
+logs/
+open-webui/pipelines/factory_agent/

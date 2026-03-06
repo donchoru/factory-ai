@@ -1,0 +1,107 @@
+openapi: "3.0.3"
+info:
+  title: Factory AI — 자동차 공장 생산 질의 API
+  description: 자동차 공장 생산 현황을 자연어로 질의하는 API. Dify Custom Tool 등록용.
+  version: "1.0.0"
+servers:
+  - url: http://host.docker.internal:8500
+    description: Factory AI 서버 (Docker 내부에서 호스트 접근)
+  - url: http://localhost:8500
+    description: Factory AI 서버 (로컬)
+
+paths:
+  /chat:
+    post:
+      operationId: chatWithFactoryAI
+      summary: 공장 생산 데이터 자연어 질의
+      description: |
+        자연어 질문을 받아 공장 생산 데이터를 조회하고 분석 결과를 반환합니다.
+        질의 예시:
+        - "오늘 생산 현황 알려줘"
+        - "소나타 이번 달 달성률은?"
+        - "3라인 불량률이 왜 높아?"
+        - "교대별 생산량 비교해줘"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: 사용자의 자연어 질문
+                  example: "이번 달 라인별 생산 현황 알려줘"
+                session_id:
+                  type: string
+                  description: 세션 ID (멀티턴 대화 유지용)
+                  default: "default"
+      responses:
+        "200":
+          description: AI 분석 응답
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    description: AI 분석 응답 (마크다운 형식)
+                  intent:
+                    type: string
+                    description: 분류된 의도
+                    enum:
+                      - production_query
+                      - defect_query
+                      - line_status
+                      - downtime_query
+                      - trend_analysis
+                      - general_chat
+                  session_id:
+                    type: string
+                    description: 세션 ID
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: 서버 상태 확인
+      description: 서버 상태와 DB 테이블별 행 수를 반환합니다.
+      responses:
+        "200":
+          description: 서버 상태
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  db_stats:
+                    type: object
+
+  /reset:
+    post:
+      operationId: resetSession
+      summary: 세션 초기화
+      description: 특정 세션의 대화 이력을 초기화합니다.
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+            default: "default"
+      responses:
+        "200":
+          description: 초기화 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  session_id:
+                    type: string
