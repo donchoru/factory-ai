@@ -9,6 +9,7 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).parent
 DB_PATH = BASE_DIR / "factory.db"
+TRACES_DIR = BASE_DIR / "traces"
 
 # Gemini
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

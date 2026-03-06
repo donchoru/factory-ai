@@ -4,12 +4,13 @@ import asyncio
 import json
 import time
 from collections import defaultdict
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from config import SERVER_PORT
+from config import SERVER_PORT, TRACES_DIR
 from db.connection import query
 from graph.workflow import build_graph
 
@@ -53,6 +54,25 @@ def _save_history(
         sessions[session_id] = history[-MAX_HISTORY:]
 
 
+def _save_trace(user_input: str, intent: str, trace_lines: list[str]) -> str:
+    """트레이스 로그를 Markdown 파일로 저장. 파일명 반환."""
+    TRACES_DIR.mkdir(exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = TRACES_DIR / f"trace_{ts}.md"
+
+    header = [
+        "# Agent Trace Log",
+        f"- **시간**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"- **사용자 입력**: {user_input}",
+        f"- **최종 의도**: {intent}",
+        "",
+        "---",
+    ]
+
+    path.write_text("\n".join(header + trace_lines), encoding="utf-8")
+    return path.name
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     """JSON 응답 — Dify Custom Tool / 직접 API 호출용."""
@@ -69,6 +89,9 @@ async def chat(req: ChatRequest):
 
     trace = result.get("trace_log", [])
     trace.append(f"\n---\n## 처리 시간: {elapsed:.2f}초")
+
+    # 트레이스 파일 저장
+    _save_trace(req.message, intent, trace)
 
     return ChatResponse(
         response=answer, intent=intent, session_id=req.session_id, trace=trace,
@@ -89,6 +112,11 @@ async def chat_stream(req: ChatRequest):
         answer = result.get("final_answer", "응답 생성 실패")
         intent = result.get("intent", "unknown")
         _save_history(history, req.session_id, req.message, answer, intent)
+
+        # 트레이스 파일 저장
+        trace = result.get("trace_log", [])
+        trace.append(f"\n---\n## 처리 시간: {elapsed:.2f}초")
+        _save_trace(req.message, intent, trace)
 
         for i in range(0, len(answer), 4):
             chunk = answer[i : i + 4]
