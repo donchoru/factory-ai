@@ -13,9 +13,11 @@
 ```
 Open WebUI (:3006) — 채팅 UI
     ↓ Pipeline → Dify Chat API
-Dify (Chatflow) — 라우팅 + 간단한 건 직접 처리
-    ├─ 일반 대화 → Dify LLM 직접 응답
-    └─ 공장 조회 → POST :8500/chat
+Dify (Chatflow, 3분류)
+    ├─ 일반 대화   → Dify LLM 직접 응답
+    ├─ 간단한 조회 → MCP (:8501) 도구 1회 호출
+    └─ 복잡한 분석 → LangGraph (:8500) 멀티스텝
+MCP + FastMCP (:8501) — 8개 SQL 도구 직접 노출
 LangGraph + FastAPI (:8500) — 복잡한 분석 전담
   IntentAgent → InfoAgent ↔ ToolNode → ResponseAgent
     ↓ @tool SQL queries
