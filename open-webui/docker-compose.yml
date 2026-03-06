@@ -7,6 +7,8 @@ services:
     environment:
       - OPENAI_API_BASE_URL=http://pipelines:9099
       - OPENAI_API_KEY=factory-ai-key
+      - DEFAULT_USER_ROLE=user
+      - ENABLE_SIGNUP=true
     volumes:
       - open-webui-data:/app/backend/data
     depends_on:

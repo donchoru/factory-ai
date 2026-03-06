@@ -46,11 +46,17 @@ def get_daily_production(
 
 
 @tool
-def get_production_summary(period: str = "this_month") -> str:
+def get_production_summary(
+    period: str = "this_month",
+    line: str = "",
+    model: str = "",
+) -> str:
     """기간별 생산 요약 — 라인별, 모델별 합계와 달성률.
 
     Args:
         period: 기간 (today, this_week, this_month). 기본값 this_month.
+        line: 라인 ID (LINE-1, LINE-2, LINE-3). 빈 문자열이면 전체.
+        model: 모델 ID (SONATA, TUCSON, GV70, IONIQ6). 빈 문자열이면 전체.
     """
     if period == "today":
         date_filter = "production_date = '2026-02-28'"
@@ -59,6 +65,13 @@ def get_production_summary(period: str = "this_month") -> str:
     else:
         date_filter = "production_date >= '2026-02-01' AND production_date <= '2026-02-28'"
 
+    line_filter = ""
+    model_filter = ""
+    if line:
+        line_filter = f" AND p.line_id = '{line}'"
+    if model:
+        model_filter = f" AND p.model_id = '{model}'"
+
     # 라인별 요약
     line_sql = f"""
         SELECT p.line_id, pl.line_name,
@@ -66,10 +79,10 @@ def get_production_summary(period: str = "this_month") -> str:
                SUM(p.actual_qty) as total_actual,
                SUM(p.defect_qty) as total_defects,
                ROUND(SUM(p.actual_qty) * 100.0 / NULLIF(SUM(p.planned_qty), 0), 1) as achievement_rate,
-               ROUND(SUM(p.defect_qty) * 100.0 / NULLIF(SUM(p.actual_qty), 0), 2) as defect_rate
+               ROUND(SUM(p.defect_qty) * 100.0 / NULLIF(SUM(p.planned_qty), 0), 2) as defect_rate
         FROM daily_production p
         JOIN production_lines pl ON p.line_id = pl.line_id
-        WHERE {date_filter}
+        WHERE {date_filter}{line_filter}{model_filter}
         GROUP BY p.line_id
         ORDER BY p.line_id
     """
@@ -84,7 +97,7 @@ def get_production_summary(period: str = "this_month") -> str:
                ROUND(SUM(p.actual_qty) * 100.0 / NULLIF(SUM(p.planned_qty), 0), 1) as achievement_rate
         FROM daily_production p
         JOIN models m ON p.model_id = m.model_id
-        WHERE {date_filter}
+        WHERE {date_filter}{line_filter}{model_filter}
         GROUP BY p.model_id
         ORDER BY total_actual DESC
     """

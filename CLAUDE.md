@@ -11,14 +11,20 @@ Stage 3: User → Open WebUI → Pipeline → Dify ─┬→ Agent+MCP (간단)
                                                └→ LangGraph :8500 (복잡) → DB
 ```
 
+### Dify Chatflow (질문 분류)
+```
+시작 → IF/ELSE (25개 키워드) ─┬─ 공장 질문 → HTTP Request (LangGraph) → 분석 응답
+                              └─ 일반 대화 → 즉시 응답 (LangGraph 안 탐)
+```
+
 ### Stage 3 Pipeline 동작 (Dify SSE 프록시)
 - `message` / `agent_message` → 토큰 실시간 스트리밍
-- `node_started(http-request)` → "🔍 분석 중..." 즉시 표시
+- `node_started(http-request)` → "🔍 분석 중..." 즉시 표시 + 3초마다 진행 표시
 - JSON 응답 (LangGraph 경유) → `response` 필드 자동 추출
 - conversation_id 자동 매핑: Open WebUI chat_id ↔ Dify conversation_id
 
 ## 기술 스택
-- Python 3.13 / `.venv/`
+- Python 3.11 / `.venv/`
 - FastMCP (Streamable HTTP, :8501) — 모든 Stage 공통
 - Dify Chatflow (질문 2분류/3분류) — Stage 2, 3
 - LangGraph (StateGraph) + Gemini 2.0 Flash — Stage 3
@@ -52,9 +58,10 @@ dify/
   README.md                # 2분류/3분류 Chatflow 가이드
 open-webui/
   docker-compose.yml       # Open WebUI + Pipelines (Dify 환경변수)
-  pipelines/factory_agent.py  # Dify SSE 프록시 + 진행상태 감지
+  pipelines/factory_agent.py  # Dify SSE 프록시 + 진행상태 감지 + 쓰레드 기반 진행 표시
 docs/
   MCP_GUIDE.md             # MCP 상세 가이드
+  CHANGELOG_20260307.md    # 질문 분류 + 진행 표시 + 도구 필터 변경 가이드
 ```
 
 ## 의도 6개
