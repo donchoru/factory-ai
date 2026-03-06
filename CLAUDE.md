@@ -23,6 +23,7 @@ SQLite (factory.db — 2026년 2월 가상 생산 데이터)
 ```
 main.py                     # CLI 대화형 진입점
 server.py                   # FastAPI 서버 (:8500)
+mcp_server.py               # MCP 서버 (:8501, FastMCP Streamable HTTP)
 config.py                   # 환경 변수, 모델 설정
 agents/
   state.py                  # AgentState (conversation_history 포함)
@@ -85,6 +86,20 @@ curl localhost:8500/health
 curl -X POST "localhost:8500/reset?session_id=test"
 ```
 
+## MCP 서버 (:8501)
+FastMCP로 8개 SQL 도구를 MCP 프로토콜(Streamable HTTP)로 노출.
+Open WebUI에서 LLM이 직접 도구를 선택/호출할 수 있다.
+
+```bash
+python mcp_server.py        # MCP 서버 (:8501)
+```
+
+- **Transport**: Streamable HTTP (`/mcp`)
+- **launchd**: `com.dongcheol.factory-mcp` (KeepAlive)
+- **Open WebUI 설정**: Admin → Settings → Tools → MCP Servers
+  - URL: `http://host.docker.internal:8501/mcp`
+
 ## 연동
 - **Dify**: `dify/openapi.yaml` → Custom Tool 등록 → Chatflow HTTP Request
-- **Open WebUI**: `cd open-webui && docker compose up -d` → localhost:3006
+- **Open WebUI Pipeline**: `cd open-webui && docker compose up -d` → localhost:3006
+- **Open WebUI MCP**: Admin → Tools → MCP Servers → `http://host.docker.internal:8501/mcp`
