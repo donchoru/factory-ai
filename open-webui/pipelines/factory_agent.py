@@ -1,8 +1,8 @@
 """Open WebUI Pipeline — Dify Chatflow SSE 프록시.
 
 Open WebUI → Pipeline → Dify Chatflow (질문 분류, SSE)
-  ├─ 일반 대화   → IF/ELSE → 즉시 응답 (빠름)
-  └─ 공장 질문   → IF/ELSE → HTTP Request → LangGraph (:8500) → JSON → Pipeline 파싱
+  ├─ 일반 대화   → Gemini LLM 노드 → 실시간 토큰 스트리밍 (빠름)
+  └─ 공장 질문   → HTTP Request → LangGraph (:8500) → JSON → Pipeline 파싱
 """
 
 import json

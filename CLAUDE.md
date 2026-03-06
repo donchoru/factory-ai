@@ -11,11 +11,15 @@ Stage 3: User → Open WebUI → Pipeline → Dify ─┬→ Agent+MCP (간단)
                                                └→ LangGraph :8500 (복잡) → DB
 ```
 
-### Dify Chatflow (질문 분류)
+### Dify Chatflow v3 (질문 분류 + Gemini LLM)
 ```
-시작 → IF/ELSE (25개 키워드) ─┬─ 공장 질문 → HTTP Request (LangGraph) → 분석 응답
-                              └─ 일반 대화 → 즉시 응답 (LangGraph 안 탐)
+시작 → 후속질문 체크(dialogue_count>1) ─┬─ 후속 → HTTP Request (LangGraph) → 분석 응답
+                                        └─ 첫질문 → 키워드 분류(23개) ─┬─ 공장 → HTTP Request (LangGraph) → 분석 응답
+                                                                      └─ 일반 → Gemini LLM (실시간 스트리밍) → 응답
 ```
+- Gemini 플러그인: langgenius/gemini (gemini-2.0-flash)
+- 일반 대화는 Gemini가 직접 토큰 스트리밍 → 빠른 응답
+- 공장 관련 질문만 LangGraph로 라우팅
 
 ### Stage 3 Pipeline 동작 (Dify SSE 프록시)
 - `message` / `agent_message` → 토큰 실시간 스트리밍
